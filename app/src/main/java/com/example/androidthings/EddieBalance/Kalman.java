@@ -23,7 +23,7 @@ public class Kalman {
 
     }
 
-    void InitKalman()
+    public void InitKalman()
     {
     /* We will set the variables like so, these can also be tuned by the user */
         Q_kalmanangle = 0.001;
@@ -39,7 +39,7 @@ public class Kalman {
         P[1][1] = 0;
     }
     // The kalmanangle should be in degrees and the rate should be in degrees per second and the delta time in seconds
-    double getkalmanangle(double newkalmanangle, double newRate, double dt)
+    public double getkalmanangle(double newkalmanangle, double newRate, double dt)
     {
         // KasBot V2  -  Kalman filter module - http://www.x-firm.com/?page_id=145
         // Modified by Kristian Lauszus
@@ -82,15 +82,15 @@ public class Kalman {
 
         return kalmanangle;
     };
-    void setkalmanangle(double newkalmanangle) { kalmanangle = newkalmanangle; }; // Used to set kalmanangle, this should be set as the starting kalmanangle
-    double getRate() { return rate; }; // Return the unbiased rate
+    public void setkalmanangle(double newkalmanangle) { kalmanangle = newkalmanangle; }; // Used to set kalmanangle, this should be set as the starting kalmanangle
+    public double getRate() { return rate; }; // Return the unbiased rate
 
     /* These are used to tune the Kalman filter */
-    void setQkalmanangle(double newQ_kalmanangle) { Q_kalmanangle = newQ_kalmanangle; };
-    void setQbias(double newQ_bias) { Q_bias = newQ_bias; };
-    void setRmeasure(double newR_measure) { R_measure = newR_measure; };
+    public void setQkalmanangle(double newQ_kalmanangle) { Q_kalmanangle = newQ_kalmanangle; };
+    public void setQbias(double newQ_bias) { Q_bias = newQ_bias; };
+    public void setRmeasure(double newR_measure) { R_measure = newR_measure; };
 
-    double getQkalmanangle() { return Q_kalmanangle; };
-    double getQbias() { return Q_bias; };
-    double getRmeasure() { return R_measure; };
+    public double getQkalmanangle() { return Q_kalmanangle; };
+    public double getQbias() { return Q_bias; };
+    public double getRmeasure() { return R_measure; };
 }

@@ -22,9 +22,9 @@ import android.util.Log;
 
 import com.example.androidthings.EddieBalance.imu.imu;
 import com.example.androidthings.EddieBalance.motordriver.MotorDriver_mraa;
+import com.example.androidthings.EddieBalance.motordriver.UDP_Interface;
 import com.example.androidthings.EddieBalance.motordriver.encoder;
 import com.example.androidthings.EddieBalance.motordriver.pid;
-
 import static java.lang.StrictMath.abs;
 
 /**
@@ -38,6 +38,31 @@ import static java.lang.StrictMath.abs;
  on this software must also be made publicly available under the terms of
  the GPL2 ("Copyleft").
  */
+
+
+/* Incoming UDP_Interface Command Packet handler:
+     *
+     * DRIVE[value]	=	+ is Forwards, - is Reverse, 0.0 is IDLE
+     * TURN[value]	=	+ is Right, - is Left, 0.0 is STRAIGHT
+     *
+     * SETPIDS = Changes all PIDs for speed and pitch controllers
+     * GETPIDS = Returns all PIDs for speed and pitch controllers via UDP_Interface
+     *
+     * PIDP[P,I,D][value] = adjust pitch PIDs
+     * SPID[P,I,D][value] = adjust speed PIDs
+     *
+     * KALQA[value] = adjust Kalman Q Angle
+     * KALQB[value] = adjust Kalman Q Bias
+     * KALR[value] = adjust Kalman R Measure
+     *
+     * STOPUDP	= Will stop Eddie from sending UDP_Interface to current recipient
+     *
+     * STREAM[0,1] = Enable/Disable Live Data Stream
+     *
+     */
+
+
+
 
 public class MainActivity extends Activity {
     private static final String TAG = MainActivity.class.getSimpleName();
@@ -53,32 +78,41 @@ public class MainActivity extends Activity {
     boolean inFalloverState = false; //Used to flag when Eddie has fallen over and disables motors
     boolean inRunAwayState = false;
     int inSteadyState = 0; //Used to flag how long Eddie is being held upright in a steady state and will enable motors
-    boolean StreamData = false;
+    public int StreamData = 0;
 
     PID_t[] pitchPID = new PID_t[2]; //PID Controllers for pitch angle
     double[] pitchPIDoutput = new double[2];
-    double pidP_P_GAIN, pidP_I_GAIN, pidP_D_GAIN, pidP_I_LIMIT, pidP_EMA_SAMPLES;
+    public double pidP_P_GAIN, pidP_I_GAIN, pidP_D_GAIN, pidP_I_LIMIT, pidP_EMA_SAMPLES;
 
     PID_t[] speedPID = new PID_t[2]; //PID Controllers for wheel speed
     double[] speedPIDoutput = new double[2];
-    double pidS_P_GAIN, pidS_I_GAIN, pidS_D_GAIN, pidS_I_LIMIT, pidS_EMA_SAMPLES;
+    public double pidS_P_GAIN, pidS_I_GAIN, pidS_D_GAIN, pidS_I_LIMIT, pidS_EMA_SAMPLES;
 
     double filteredPitch;
     double filteredRoll;
 
-    double driveTrim = 0;
-    double turnTrim = 0;
+    public double driveTrim = 0;
+    public double turnTrim = 0;
     double smoothedDriveTrim = 0;
     private imu Eddyimu;
     private MotorDriver_mraa MotorDriver;
-    private Kalman Kalman;
+    public Kalman Kalman;
     private pid EddyPid;
     private encoder EddyEncoder;
+    private UDP_Interface EddyUDP;
+    public String thisEddieName = "00010101";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Log.d(TAG, "onCreate");
+
+        this.Eddyimu = new imu();
+        this.MotorDriver = new MotorDriver_mraa();
+        this.EddyEncoder = new encoder();
+        this.Kalman = new Kalman();
+        this.EddyPid = new pid();
+        this.EddyUDP = new UDP_Interface(this);
     }
 
     @Override
@@ -89,17 +123,15 @@ public class MainActivity extends Activity {
 
     double current_milliseconds()
     {
-        //struct timeval c_time;
-        //gettimeofday(&c_time, NULL);
-        //double milliseconds = c_time.tv_sec * 1000 + c_time.tv_usec / 1000;
-        return 10000;//milliseconds;
+        long millis = System.currentTimeMillis() % 1000;
+        return millis;
     }
 
 
     /* print() function used to handle data output
  * Current implementation will check output mode and direct data accordingly
  */
-    int print(String buffer, Object... b) {
+    public int print(String buffer, Object... b) {
         String result = String.format(buffer,b);
 
         switch( outputto )
@@ -108,7 +140,7 @@ public class MainActivity extends Activity {
                 Log.d(TAG, result);
                 break;
             case UDP:
-                //UDPBindSend(result.toCharArray(), result.length());
+                EddyUDP.UDPBindSend(result);
                 break;
         }
 
@@ -126,7 +158,8 @@ public class MainActivity extends Activity {
     {
 
 
-        //Init UDP with callbacks and pointer to run status
+        //Init UDP_Interface with callbacks and pointer to run status
+
         //initUDP( &UDP_Command_Handler, &UDP_Control_Handler, &Running );
 
         print("Eddie starting...\r\n");
@@ -135,18 +168,18 @@ public class MainActivity extends Activity {
 
         double[] EncoderPos = new double[2];
 
-        this.EddyEncoder = new encoder();
+
 
         EddyEncoder.initEncoders( 183, 46, 45, 44 );
         print("Encoders activated.\r\n");
 
-        this.Eddyimu = new imu();
+
         print("IMU Started.\r\n");
 
         double kalmanAngle;
-        this.Kalman = new Kalman();
+
         Kalman.InitKalman();
-        this.MotorDriver = new MotorDriver_mraa();
+
         print( "Starting motor driver (and resetting wireless) please be patient..\r\n" );
         if ( MotorDriver.motor_driver_enable() < 1 )
         {
@@ -156,10 +189,10 @@ public class MainActivity extends Activity {
         }
         print("Motor Driver Started.\r\n");
 
-        //print("Eddie is starting the UDP network thread..\r\n");
+        //print("Eddie is starting the UDP_Interface network thread..\r\n");
         //pthread_create( udplistenerThread, null, udplistener_Thread, null );
 
-        this.EddyPid = new pid();
+
 
         print( "Eddie is Starting PID controllers\r\n" );
 	/*Set default PID values and init pitchPID controllers*/
@@ -278,7 +311,7 @@ public class MainActivity extends Activity {
             MotorDriver.set_motor_speed_right( pitchPIDoutput[0] );
             MotorDriver.set_motor_speed_left( pitchPIDoutput[1] );
 
-            if ( (!inFalloverState || outputto == UDP) && StreamData )
+            if ( (!inFalloverState || outputto == UDP) && StreamData == 1 )
             {
                 print( "PIDout: %0.2f,%0.2f\tcompPitch: %6.2f kalPitch: %6.2f\tPe: %0.3f\tIe: %0.3f\tDe: %0.3f\tPe: %0.3f\tIe: %0.3f\tDe: %0.3f\r\n",
                         speedPIDoutput[0],
@@ -301,7 +334,7 @@ public class MainActivity extends Activity {
         EddyEncoder.CloseEncoder();
 
         //pthread_join(udplistenerThread, NULL);
-        //print( "UDP Thread Joined..\r\n" );
+        //print( "UDP_Interface Thread Joined..\r\n" );
 
 
         MotorDriver.motor_driver_disable();
@@ -309,5 +342,9 @@ public class MainActivity extends Activity {
 
         print( "Eddie cleanup complete. Good Bye!\r\n" );
         return 0;
+    }
+
+    public void setName(String substring) {
+        thisEddieName  = substring;
     }
 }

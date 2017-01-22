@@ -1,13 +1,18 @@
-Android Things empty project template
+Android Things EddieBalance
 =====================================
 
-Use this empty project as a template for your Android Things project.
+Eddie the Balance Bot is a self blanacing robot based on the Intel Edison and Sparkfun Blocks.
+
+
+This project now reflects [r3n33 EddiePlus design](https://github.com/r3n33/EddieBalance)  which incorporates encoders and some new body stylings. The new 3D models and details including a builder's guide are available on thingiverse: www.thingiverse.com/thing:694969
+
+EddieBalance is currently running the Android Things SDK Preview image from Google and requires the installation of libmraa from Intel (instructions to come in due time).
 
 
 Pre-requisites
 --------------
 
-- Android Things compatible board
+- Android Things Intel Edison and Sparkfun Blocks
 - Android Studio 2.2+
 
 

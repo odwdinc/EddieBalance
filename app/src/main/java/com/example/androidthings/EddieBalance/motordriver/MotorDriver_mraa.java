@@ -17,7 +17,8 @@ public class MotorDriver_mraa {
     //Datasheet spec is 100kHz Maximum PWM switching frequency
     private static final int PWM_PERIOD = 1000000; //nano seconds for 1kHz
     private static final char FORWARD = 1;
-    private static final char REVERSE = 2;
+    private static final char REVERSE = 0;
+    private static final char STOP=2;
 
     char[] c_system_command = new char[128];
 
@@ -25,12 +26,14 @@ public class MotorDriver_mraa {
     Pwm pwm0,pwm1;
 
 
-    int MotorDriver(){
+    public void MotorDriver(){
         System.loadLibrary("mraa");
         Platform platform = mraa.getPlatformType();
-        Log.d(TAG,"Welcome to libmraa\n Version: "+mraa.getVersion()+"\n Running on "+platform.toString()+"\n");
+        Log.d(TAG,"Welcome ["+TAG+"] to libmraa\n Version: "+mraa.getVersion()+"\n Running on "+platform.toString()+"\n");
+        mraa.init();
+    }
 
-
+    public int motor_driver_enable(){
         gpio_ain1 = new Gpio(48);
         gpio_ain2 = new Gpio(47);
         gpio_bin1 = new Gpio(15);
@@ -67,7 +70,7 @@ public class MotorDriver_mraa {
         gpio_stby.write(1);
         return 1;
     }
-    void motor_driver_disable()
+    public void motor_driver_disable()
     {
         //Put H Bridge into standby mode
         gpio_stby.write(0);
@@ -84,7 +87,7 @@ public class MotorDriver_mraa {
         if ( pwm1 != null ) pwm1.delete();
 
     }
-    void motor_driver_standby( char p_option )
+    public void motor_driver_standby( char p_option )
     {
         if ( p_option > 0 )
         {
@@ -122,7 +125,7 @@ public class MotorDriver_mraa {
         }
     }
 
-    void set_motor_speed_left ( float p_speed )
+    public void set_motor_speed_left (double p_speed )
     {
         if ( p_speed < 0.0f )
         {
@@ -142,7 +145,7 @@ public class MotorDriver_mraa {
 	close(pwm0);
 	*/
     }
-    void set_motor_speed_right( float p_speed )
+    public void set_motor_speed_right(double p_speed )
     {
         if ( p_speed < 0.0f )
         {

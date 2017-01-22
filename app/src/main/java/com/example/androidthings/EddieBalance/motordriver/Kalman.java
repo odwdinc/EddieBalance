@@ -19,7 +19,7 @@ public class Kalman {
     double y; // kalmanangle difference
     double S; // Estimate error
 
-    public void Kalman(){
+    public  Kalman(){
 
     }
 

@@ -124,7 +124,7 @@ public class imu {
 
     byte[] rx_tx_buf= new byte[MAX_BUFFER_LENGTH]; ;
 
-    void imu() throws IOException {
+    public imu(String i2cPort) throws IOException {
 
         PeripheralManagerService manager = new PeripheralManagerService();
         List<String> deviceList = manager.getI2cBusList();
@@ -134,8 +134,8 @@ public class imu {
             Log.i(TAG, "List of available devices: " + deviceList);
         }
 
-        GYRO_Device = manager.openI2cDevice("I2C_1", GYRO_I2C_ADDR);
-        XM_Device = manager.openI2cDevice("I2C_1", XM_I2C_ADDR);
+        GYRO_Device = manager.openI2cDevice(i2cPort, GYRO_I2C_ADDR);
+        XM_Device = manager.openI2cDevice(i2cPort, XM_I2C_ADDR);
 
         sendi2c( GYRO_Device, FIFO_CTRL_REG_G, 0 );
         sendi2c( GYRO_Device, CTRL_REG1_G, 0x0F ); //Normal mode, enable all axes //0xFF ); //??unknown config??

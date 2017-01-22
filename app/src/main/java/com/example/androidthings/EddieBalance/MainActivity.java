@@ -27,6 +27,9 @@ import com.example.androidthings.EddieBalance.motordriver.PID_t;
 import com.example.androidthings.EddieBalance.motordriver.UDP_Interface;
 import com.example.androidthings.EddieBalance.motordriver.encoder;
 import com.example.androidthings.EddieBalance.motordriver.pid;
+
+import java.io.IOException;
+
 import static java.lang.StrictMath.abs;
 
 /**
@@ -109,7 +112,11 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         Log.d(TAG, "onCreate");
 
-        this.Eddyimu = new imu();
+        try {
+            this.Eddyimu = new imu("I2c_1");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         this.MotorDriver = new MotorDriver_mraa(48,47,15,14,49);
         this.EddyEncoder = new encoder(183, 46, 45, 44);
         this.Kalman = new Kalman();

@@ -18,7 +18,7 @@ public class pid {
     public static final double PIDP_EMA_SAMPLES = 2.0f;
     public static final double  PIDP_I_LIMIT  = 10.0; //Ilimit is before process gain
 
-    public void pid(){
+    public pid(){
 
     }
 

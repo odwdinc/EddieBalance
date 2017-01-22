@@ -2,8 +2,18 @@ package com.example.androidthings.EddieBalance.motordriver;
 
 import com.example.androidthings.EddieBalance.MainActivity;
 
+import java.io.IOException;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.util.Arrays;
 
+import static android.system.OsConstants.AF_INET;
+import static android.system.OsConstants.FIONREAD;
+import static android.system.OsConstants.IPPROTO_UDP;
+import static android.system.OsConstants.SOCK_DGRAM;
 import static java.lang.Thread.sleep;
 
 /**
@@ -20,9 +30,190 @@ public class UDP_Interface {
     private static final char UDP_CONTROL_PORT = 4240; //UDP Port for receiving control packets
     private static final char  UDP_RESPOND_PORT =4243; //UDP Port for returning data to user
 
+    public class sockaddr_in {
+        public sockaddr_in(InetAddress address, int port){
+            this.address = address;
+            this.port = port;
+            try {
+                Socket = new DatagramSocket();
+            } catch (SocketException e) {
+                e.printStackTrace();
+            }
+        }
+        byte[] message = new byte[MAXMESSAGESIZE];
+        DatagramSocket Socket;
+        DatagramPacket Packet;
+        int port;
+        InetAddress address;
+
+        public sockaddr_in(int udpListenPort) {
+            try {
+                Socket = new DatagramSocket(udpListenPort);
+            } catch (SocketException e) {
+                e.printStackTrace();
+            }
+            Packet= new DatagramPacket(message, message.length);
+        }
+
+        public void send(String data) {
+            Packet = new DatagramPacket(data.getBytes(), data.length(), address, port);
+            try {
+                Socket.send(Packet);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        public void close() {
+            Socket.close();
+        }
+
+        public boolean hasData() {
+            try {
+                Socket.receive(Packet);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return (Packet.getLength() != 0);
+        }
+
+        public String receive() {
+            String text = new String(message, 0, Packet.getLength());
+            return text;
+        }
+    }
+
+
+    sockaddr_in tx_command_socketfd; 	//Socket descriptor used to send data to bound client
+    sockaddr_in tx_control_socketfd; 	//Socket descriptor used to response to control packets
+    sockaddr_in rx_command_socketfd; 		//Socket descriptor used to receive commands from user
+    sockaddr_in rx_control_socketfd; 		//Socket descriptor used to receive control data from user
+
 
     public UDP_Interface(MainActivity activity) {
         this.activity = activity;
+    }
+
+
+
+    void initUDP( int  p_running )
+    {
+        isRunning = p_running==1;
+    }
+
+    String lastRXAddress = ""; //The last address a UDP message was received from
+    String commandBindAddress = ""; //This is the address we are bound to receive commands from
+    boolean isBoundToClient = false;
+
+    void setCommandBindAddress()
+    {
+        //Set the bind address to the last address received from
+        commandBindAddress = lastRXAddress;
+
+        //Init the TX command socket with the new bind address
+        initUDPCmdSend( commandBindAddress, UDP_RESPOND_PORT );
+
+        isBoundToClient = true;
+    }
+
+    void initUDPCtrlSend( String sendtoIP, char sendtoPort )
+    {
+        try {
+            tx_control_socketfd = new sockaddr_in(InetAddress.getByName(sendtoIP),sendtoPort);
+        } catch (UnknownHostException e) {
+            e.printStackTrace();
+        }
+    }
+
+    void initUDPCmdSend( String sendtoIP, char sendtoPort )
+    {
+        try {
+            tx_command_socketfd = new sockaddr_in(InetAddress.getByName(sendtoIP),sendtoPort);
+        } catch (UnknownHostException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void UDPBindSend(String data)
+    {
+        if ( tx_command_socketfd !=null && isBoundToClient ) {
+            tx_command_socketfd.send(data);
+        }
+    }
+
+    void UDPCtrlSend( String data )
+    {
+        if(tx_control_socketfd!=null)
+        {
+            tx_control_socketfd.send(data);
+        }
+    }
+
+
+    boolean checkUDPReady( sockaddr_in p_socket )
+    {
+
+	/* If there is data to be read on the socket bring it in and capture the source IP */
+        if( p_socket.hasData() )
+        {
+            //Get address from this received packet
+            String thisRXaddress = p_socket.Packet.getAddress().toString();
+
+
+
+            //If this RX address does not match the last RX address && is a control packet...
+            if ( thisRXaddress != lastRXAddress)
+            {
+                UDPCloseCtrlTX(); //...close the control TX socket
+                initUDPCtrlSend( thisRXaddress, UDP_RESPOND_PORT ); //and re-open with the address we need to respond to
+            }
+
+            //Store the last RX address
+            lastRXAddress = thisRXaddress;
+
+            return true;
+        }
+
+        return false;
+    }
+
+    void UDPCloseTX()
+    {
+        tx_command_socketfd.close();
+        tx_command_socketfd =null;
+    }
+    void UDPCloseCtrlTX()
+    {
+        tx_control_socketfd.close();
+        tx_control_socketfd =null;
+    }
+
+    public void udplistener_Thread() throws InterruptedException {
+
+        rx_command_socketfd = new sockaddr_in(UDP_COMMAND_PORT);
+        rx_control_socketfd  = new sockaddr_in(UDP_CONTROL_PORT);
+
+        while (isRunning){
+            sleep( 20000 ); //Give this thread a break between iterations to keep CPU usage down
+
+		/* Check for UDP data on Control port */
+            while( checkUDPReady( rx_control_socketfd ) )
+            {
+                UDP_Control_Handler( rx_control_socketfd.receive() );
+                Arrays.fill(rx_control_socketfd.message,(byte) 0);
+            }
+
+		/* Check for UDP data on Command port */
+            while( checkUDPReady( rx_command_socketfd ) )
+            {
+                if ( isBoundToClient && ( lastRXAddress == commandBindAddress) )
+                {
+                    UDP_Command_Handler(rx_command_socketfd.receive());
+                }
+                Arrays.fill(rx_command_socketfd.message,(byte) 0);
+            }
+        }
+
     }
 
     /* Incoming UDP_Interface Control Packet handler */
@@ -35,7 +226,7 @@ public class UDP_Interface {
 
         if ( p_udpin.contains("DISCOVER"))
         {
-           response = "DISCOVER: "+ activity.thisEddieName;
+            response = "DISCOVER: "+ activity.thisEddieName;
         }
         else if ( p_udpin.contains("SETNAME"))
         {
@@ -50,146 +241,6 @@ public class UDP_Interface {
 
         UDPCtrlSend( response );
     }
-
-    void initUDP( int  p_running )
-    {
-        isRunning = p_running==1;
-    }
-
-    char[] lastRXAddress = new char[16]; //The last address a UDP message was received from
-    char[] commandBindAddress = new char[16]; //This is the address we are bound to receive commands from
-    int isBoundToClient = 0;
-
-    void setCommandBindAddress()
-    {
-        //Set the bind address to the last address received from
-        commandBindAddress = lastRXAddress;
-
-        //Init the TX command socket with the new bind address
-        initUDPCmdSend( commandBindAddress, UDP_RESPOND_PORT );
-
-        isBoundToClient = 1;
-    }
-
-    void initUDPCtrlSend( char [] sendtoIP, short sendtoPort )
-    {
-        tx_control_socketfd = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);	// Create socket for sending
-        memset( &tx_ctrl_addrin, 0, sizeof( tx_ctrl_addrin ) );			// Zero out structure
-        tx_ctrl_addrin.sin_family = AF_INET;							// Internet address family
-        tx_ctrl_addrin.sin_addr.s_addr = inet_addr( sendtoIP );			// Destination IP address
-        tx_ctrl_addrin.sin_port = htons(sendtoPort);					// Destination port
-    }
-
-    void initUDPCmdSend( char [] sendtoIP, char sendtoPort )
-    {
-        tx_command_socketfd = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);	// Create socket for sending
-        memset( &tx_cmd_addrin, 0, sizeof( tx_cmd_addrin ) );			// Zero out structure
-        tx_cmd_addrin.sin_family = AF_INET;								// Internet address family
-        tx_cmd_addrin.sin_addr.s_addr = inet_addr( sendtoIP );			// Destination IP address
-        tx_cmd_addrin.sin_port = htons(sendtoPort);						// Destination port
-    }
-
-    public void UDPBindSend(String data)
-    {
-        if ( tx_command_socketfd >= 0 && isBoundToClient )
-        {
-            sendto( tx_command_socketfd, data, len, 0, ( struct sockaddr * )&tx_cmd_addrin, sizeof( tx_cmd_addrin ) );
-        }
-    }
-
-    void UDPCtrlSend( String data )
-    {
-        if(tx_control_socketfd >= 0)
-        {
-            sendto( tx_control_socketfd, data, strlen(data), 0, ( struct sockaddr * )&tx_ctrl_addrin, sizeof( tx_ctrl_addrin ) );
-        }
-    }
-
-    void initListener(  short udpListenPort, int [] p_socket, char [] p_addr )
-    {
-        *p_socket = socket( AF_INET, SOCK_DGRAM, 0 );
-        Arrays.fill(p_addr,(char)0);
-        (*p_addr).sin_family = AF_INET;
-        (*p_addr).sin_addr.s_addr = htonl( INADDR_ANY );
-        (*p_addr).sin_port = htons( udpListenPort );
-        bind( *p_socket, (struct sockaddr *)p_addr, sizeof( *p_addr ) );
-    }
-
-    int checkUDPReady( char [] udpBuffer, int [] p_socket )
-    {
-        int bytesAv = 0;
-
-	/* If there is data to be read on the socket bring it in and capture the source IP */
-        if( ioctl( *p_socket, FIONREAD, &bytesAv ) > 0 || bytesAv > 0 )
-        {
-            int udpMsgLen = 0;
-            struct sockaddr_in rx_from_addr;
-            socklen_t len = sizeof( rx_from_addr );
-            //Receive UDP data
-            udpMsgLen = recvfrom( *p_socket, udpBuffer, MAXMESSAGESIZE, 0, ( struct sockaddr * )&rx_from_addr, &len );
-            udpBuffer[ udpMsgLen ] = 0; //Null terminate UDP RX string
-
-            //Get address from this received packet
-            char thisRXaddress[16] = {0};
-            sprintf( thisRXaddress, "%s", inet_ntoa( rx_from_addr.sin_addr ) );
-
-            //If this RX address does not match the last RX address && is a control packet...
-            if ( p_socket == &rx_control_socketfd && memcmp( lastRXAddress, thisRXaddress, sizeof(lastRXAddress) ) != 0 )
-            {
-                UDPCloseCtrlTX(); //...close the control TX socket
-                initUDPCtrlSend( thisRXaddress, UDP_RESPOND_PORT ); //and re-open with the address we need to respond to
-            }
-
-            //Store the last RX address
-            strcpy( lastRXAddress, thisRXaddress );
-
-            return 1;
-        }
-
-        return 0;
-    }
-
-    void UDPCloseTX()
-    {
-        close( tx_command_socketfd );
-        tx_command_socketfd = -1;
-    }
-    void UDPCloseCtrlTX()
-    {
-        close( tx_control_socketfd );
-        tx_control_socketfd = -1;
-    }
-
-    public void udplistener_Thread() throws InterruptedException {
-        initListener( UDP_COMMAND_PORT, rx_command_socketfd, rx_cmd_addrin );
-        initListener( UDP_CONTROL_PORT, rx_control_socketfd, rx_ctrl_addrin );
-
-        char[] incomingUDP = new char[MAXMESSAGESIZE + 1 ];
-
-        while (isRunning){
-            sleep( 20000 ); //Give this thread a break between iterations to keep CPU usage down
-
-		/* Check for UDP data on Control port */
-            while( checkUDPReady( incomingUDP, rx_control_socketfd ) )
-            {
-                (controlFunctionPtr)(incomingUDP);
-                Arrays.fill(incomingUDP,(char)0);
-            }
-
-		/* Check for UDP data on Command port */
-            while( checkUDPReady( incomingUDP, rx_command_socketfd ) )
-            {
-                if ( isBoundToClient && memcmp( lastRXAddress, commandBindAddress, sizeof( lastRXAddress ) ) == 0 )
-                {
-                    (commandFunctionPtr)(incomingUDP);
-                }
-                Arrays.fill(incomingUDP,(char)0);
-            }
-        }
-
-    }
-
-
 
     /* Incoming UDP_Interface Command Packet handler:
      *

@@ -115,11 +115,19 @@ public class MainActivity extends Activity {
         this.Kalman = new Kalman();
         this.EddyPid = new pid();
         this.EddyUDP = new UDP_Interface(this);
+
+        EddyBotRunner.start();
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        try {
+            Running = false;
+            EddyBotRunner.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
         Log.d(TAG, "onDestroy");
     }
 
@@ -128,6 +136,22 @@ public class MainActivity extends Activity {
         long millis = System.currentTimeMillis() % 1000;
         return millis;
     }
+
+
+    Thread EddyBotRunner = new Thread(new Runnable() {
+        public void run() {
+            main();
+        }
+    });
+
+
+    Thread udplistenerThread= new Thread(new Runnable() {
+
+        @Override
+        public void run() {
+            EddyUDP.udplistener_Thread();
+        }
+    });
 
 
     /* print() function used to handle data output
@@ -193,7 +217,7 @@ public class MainActivity extends Activity {
 
         //print("Eddie is starting the UDP_Interface network thread..\r\n");
         //pthread_create( udplistenerThread, null, udplistener_Thread, null );
-
+        udplistenerThread.start();
 
 
         print( "Eddie is Starting PID controllers\r\n" );
@@ -337,7 +361,11 @@ public class MainActivity extends Activity {
 
         //pthread_join(udplistenerThread, NULL);
         //print( "UDP_Interface Thread Joined..\r\n" );
-
+        try {
+            udplistenerThread.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
 
         MotorDriver.motor_driver_disable();
         print( "Motor Driver Disabled..\r\n" );

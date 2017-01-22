@@ -24,21 +24,31 @@ public class MotorDriver_mraa {
 
     Gpio gpio_stby,gpio_ain1,gpio_ain2,gpio_bin1,gpio_bin2;
     Pwm pwm0,pwm1;
+    private int a1;
+    private int a2;
+    private int b1;
+    private int b2;
+    private int stby;
 
 
-    public void MotorDriver(){
-        System.loadLibrary("mraa");
+    public MotorDriver_mraa(int a1,int a2,int b1,int b2,int stby){
+        mraa.init();
         Platform platform = mraa.getPlatformType();
         Log.d(TAG,"Welcome ["+TAG+"] to libmraa\n Version: "+mraa.getVersion()+"\n Running on "+platform.toString()+"\n");
-        mraa.init();
+
+        this.a1 = a1;
+        this.a2 = a2;
+        this.b1 = b1;
+        this.b2 =b2;
+        this.stby = stby;
     }
 
     public int motor_driver_enable(){
-        gpio_ain1 = new Gpio(48);
-        gpio_ain2 = new Gpio(47);
-        gpio_bin1 = new Gpio(15);
-        gpio_bin2 = new Gpio(14);
-        gpio_stby = new Gpio(49);
+        gpio_ain1 = new Gpio(a1);
+        gpio_ain2 = new Gpio(a2);
+        gpio_bin1 = new Gpio(b1);
+        gpio_bin2 = new Gpio(b2);
+        gpio_stby = new Gpio(stby);
 
         gpio_ain1.dir(Dir.DIR_OUT);
         gpio_ain2.dir(Dir.DIR_OUT);

@@ -1,7 +1,5 @@
 package com.example.androidthings.EddieBalance.motordriver;
 
-import com.example.androidthings.EddieBalance.PID_t;
-
 /*
   Created by antho on 1/22/2017.
  */

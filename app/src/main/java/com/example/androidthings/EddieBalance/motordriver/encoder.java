@@ -13,15 +13,23 @@ import mraa.Edge;
 
 public class encoder {
     private static final String TAG = encoder.class.getSimpleName();
+    private final int a;
+    private final int b;
+    private final int c;
+    private final int d;
     Gpio[] encoderx = new Gpio[4];
     double[] position =new double[ 2 ];
     int[] lastpins = new int[ 4 ];
 
-    public void encoder(){
-        System.loadLibrary("mraa");
+    public encoder( int a, int b, int c, int d ){
+        this.a = a;
+        this.b =b;
+        this.c = c;
+        this.d = d;
+        mraa.init();
+
         Platform platform = mraa.getPlatformType();
         Log.d(TAG,"Welcome ["+TAG+"] to libmraa\n Version: "+mraa.getVersion()+"\n Running on "+platform.toString()+"\n");
-        mraa.init();
     }
 
     public void ResetEncoders()
@@ -59,7 +67,7 @@ public class encoder {
         position[1] += distance;
     }
 
-    public  void initEncoders( int a, int b, int c, int d )
+    public  void initEncoders()
     {
         position[0] = position[1] = 0;
         encoderx[ 0 ] = new Gpio( a );

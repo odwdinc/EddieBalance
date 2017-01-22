@@ -21,7 +21,9 @@ import android.os.Bundle;
 import android.util.Log;
 
 import com.example.androidthings.EddieBalance.imu.imu;
+import com.example.androidthings.EddieBalance.motordriver.Kalman;
 import com.example.androidthings.EddieBalance.motordriver.MotorDriver_mraa;
+import com.example.androidthings.EddieBalance.motordriver.PID_t;
 import com.example.androidthings.EddieBalance.motordriver.UDP_Interface;
 import com.example.androidthings.EddieBalance.motordriver.encoder;
 import com.example.androidthings.EddieBalance.motordriver.pid;
@@ -96,7 +98,7 @@ public class MainActivity extends Activity {
     double smoothedDriveTrim = 0;
     private imu Eddyimu;
     private MotorDriver_mraa MotorDriver;
-    public Kalman Kalman;
+    public com.example.androidthings.EddieBalance.motordriver.Kalman Kalman;
     private pid EddyPid;
     private encoder EddyEncoder;
     private UDP_Interface EddyUDP;
@@ -108,8 +110,8 @@ public class MainActivity extends Activity {
         Log.d(TAG, "onCreate");
 
         this.Eddyimu = new imu();
-        this.MotorDriver = new MotorDriver_mraa();
-        this.EddyEncoder = new encoder();
+        this.MotorDriver = new MotorDriver_mraa(48,47,15,14,49);
+        this.EddyEncoder = new encoder(183, 46, 45, 44);
         this.Kalman = new Kalman();
         this.EddyPid = new pid();
         this.EddyUDP = new UDP_Interface(this);
@@ -170,7 +172,7 @@ public class MainActivity extends Activity {
 
 
 
-        EddyEncoder.initEncoders( 183, 46, 45, 44 );
+        EddyEncoder.initEncoders( );
         print("Encoders activated.\r\n");
 
 

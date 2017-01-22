@@ -89,7 +89,7 @@ public class UDP_Interface {
         tx_cmd_addrin.sin_port = htons(sendtoPort);						// Destination port
     }
 
-    void UDPBindSend( String data )
+    public void UDPBindSend(String data)
     {
         if ( tx_command_socketfd >= 0 && isBoundToClient )
         {

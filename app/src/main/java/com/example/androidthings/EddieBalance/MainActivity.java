@@ -149,7 +149,11 @@ public class MainActivity extends Activity {
 
         @Override
         public void run() {
-            EddyUDP.udplistener_Thread();
+            try {
+                EddyUDP.udplistener_Thread();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
     });
 

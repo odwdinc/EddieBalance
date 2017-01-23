@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.util.List;
 
 import static java.lang.Math.*;
+import static java.lang.Thread.sleep;
 
 /**
  * Created by anthony on 1/21/2017.
@@ -153,15 +154,24 @@ public class imu {
         sendi2c( XM_Device, CTRL_REG7_XM, 0x00);
 	    /*
 		return;
-	  while(1)
-		{
-			readGyro();
-			readAccel();
-			readMag();
-			Log.d(TAG,"gx:%6.2f gy:%6.2f gz:%6.2f  ax:%6.2f ay:%6.2f az:%6.2f  mx:%6.2f my:%6.2f mz:%6.2f  temp:%0.0f\n",gx,gy,gz,ax,ay,az,mx,my,mz,temp);
-		}
 		*/
     }
+
+    public Thread debugInfo = new Thread(new Runnable() {
+        @Override
+        public void run() {
+            while (temp == 0.0) {
+                readSensors();
+                String result = String.format("gx:%6.2f gy:%6.2f gz:%6.2f  ax:%6.2f ay:%6.2f az:%6.2f  mx:%6.2f my:%6.2f mz:%6.2f  temp:%6.2f\n", gx, gy, gz, ax, ay, az, mx, my, mz, temp);
+                Log.d(TAG, result);
+                try {
+                    sleep( 1000 );
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    });
 
     private void sendi2c(I2cDevice mDevice,int reg, int tosend)
     {
@@ -174,15 +184,13 @@ public class imu {
 
     private char readi2c(I2cDevice mDevice, int reg, int count)
     {
-        int i = 0;
-        for (i = 0; i < count; i++)
-        {
+
             try {
-                mDevice.writeRegByte(reg + i,rx_tx_buf[i]);
+                mDevice.readRegBuffer(reg,rx_tx_buf,count);
             } catch (IOException e) {
                 e.printStackTrace();
             }
-        }
+
         if(count == 1)return (char)rx_tx_buf[0];
         return 0;
     }

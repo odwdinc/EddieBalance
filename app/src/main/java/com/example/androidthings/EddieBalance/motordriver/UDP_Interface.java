@@ -194,7 +194,7 @@ public class UDP_Interface {
         rx_control_socketfd  = new sockaddr_in(UDP_CONTROL_PORT);
 
         while (isRunning){
-            sleep( 20000 ); //Give this thread a break between iterations to keep CPU usage down
+            sleep( 2000 ); //Give this thread a break between iterations to keep CPU usage down
 
 		/* Check for UDP data on Control port */
             while( checkUDPReady( rx_control_socketfd ) )

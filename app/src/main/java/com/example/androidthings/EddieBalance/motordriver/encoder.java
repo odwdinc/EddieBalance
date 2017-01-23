@@ -13,24 +13,34 @@ import mraa.Edge;
 
 public class encoder {
     private static final String TAG = encoder.class.getSimpleName();
-    private final int a;
-    private final int b;
-    private final int c;
-    private final int d;
+    private  int a;
+    private  int b;
+    private  int c;
+    private  int d;
     Gpio[] encoderx = new Gpio[4];
     double[] position =new double[ 2 ];
     int[] lastpins = new int[ 4 ];
+;
 
     public encoder( int a, int b, int c, int d ){
         this.a = a;
-        this.b =b;
+        this.b = b;
         this.c = c;
         this.d = d;
+        System.loadLibrary("pmraajava");
         mraa.init();
-
-        Platform platform = mraa.getPlatformType();
-        Log.d(TAG,"Welcome ["+TAG+"] to libmraa\n Version: "+mraa.getVersion()+"\n Running on "+platform.toString()+"\n");
+        Log.d(TAG,"Welcome ["+TAG+"] to libmraa Version: "+mraa.getVersion());
     }
+
+
+    private boolean debug =false;
+    public Thread debugInfo = new Thread(new Runnable() {
+        @Override
+        public void run() {
+            initEncoders();
+            debug = true;
+        }
+    });
 
     public void ResetEncoders()
     {
@@ -71,6 +81,8 @@ public class encoder {
     {
         position[0] = position[1] = 0;
         encoderx[ 0 ] = new Gpio( a );
+
+        Log.d(TAG,"GPIO B = "+b);
         encoderx[ 1 ] = new Gpio( b );
         encoderx[ 2 ] = new Gpio( c );
         encoderx[ 3 ] = new Gpio( d );
@@ -159,6 +171,10 @@ public class encoder {
 
             position[ 0 ] += change;
 
+            if(debug){
+                Log.d(TAG,"EncoderInterruptA: "+change+", position: "+position[ 0 ]);
+            }
+
             lastpins[ 0 ] = currentpins[ 0 ];
             lastpins[ 1 ] = currentpins[ 1 ];
 
@@ -226,6 +242,10 @@ public class encoder {
             }
 
             position[ 1 ] += change;
+            if(debug){
+                Log.d(TAG,"EncoderInterruptB: "+change+", position: "+position[ 1 ]);
+            }
+
             lastpins[ 2 ] = currentpins[ 0 ];
             lastpins[ 3 ] = currentpins[ 1 ];
 

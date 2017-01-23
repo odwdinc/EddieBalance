@@ -30,7 +30,13 @@ import com.example.androidthings.EddieBalance.motordriver.pid;
 
 import java.io.IOException;
 
+import mraa.IntelEdison;
+
 import static java.lang.StrictMath.abs;
+import static mraa.mraaJNI.INTEL_EDISON_GP183_get;
+import static mraa.mraaJNI.INTEL_EDISON_GP45_get;
+import static mraa.mraaJNI.INTEL_EDISON_GP46_get;
+import static mraa.mraaJNI.INTEL_EDISON_GP47_get;
 
 /**
  /*
@@ -113,17 +119,32 @@ public class MainActivity extends Activity {
         Log.d(TAG, "onCreate");
 
         try {
-            this.Eddyimu = new imu("I2c_1");
+            this.Eddyimu = new imu("I2C1");
         } catch (IOException e) {
             e.printStackTrace();
         }
+
+        //this.Eddyimu.debugInfo.start();
+
+        ;
+
+        this.EddyEncoder = new encoder(INTEL_EDISON_GP183_get(),
+                INTEL_EDISON_GP47_get(),
+                INTEL_EDISON_GP46_get(),
+                INTEL_EDISON_GP45_get());
+
+        this.EddyEncoder.debugInfo.start();
+
+
+        /*
         this.MotorDriver = new MotorDriver_mraa(48,47,15,14,49);
-        this.EddyEncoder = new encoder(183, 46, 45, 44);
+
         this.Kalman = new Kalman();
         this.EddyPid = new pid();
         this.EddyUDP = new UDP_Interface(this);
 
         EddyBotRunner.start();
+        */
     }
 
     @Override

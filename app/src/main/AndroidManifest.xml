@@ -16,12 +16,14 @@
   -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.androidthings.EddieBalance">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+
 
     <application
         android:allowBackup="true"
         android:icon="@android:drawable/sym_def_app_icon"
         android:label="@string/app_name">
-
         <uses-library android:name="com.google.android.things"/>
 
         <activity android:name="com.example.androidthings.EddieBalance.MainActivity">

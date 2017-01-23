@@ -22,8 +22,9 @@ public class pid {
 
     }
 
-    public void PIDinit(PID_t pid, double pgain, double igain, double dgain, double ilimit, double numsamples)
+    public PID_t PIDinit( double pgain, double igain, double dgain, double ilimit, double numsamples)
     {
+        PID_t pid = new PID_t();
         pid.processGain = pgain;
         pid.integralTime = igain;
         pid.derivateTime = dgain;
@@ -35,6 +36,7 @@ public class pid {
 
         pid.iLimit = ilimit;
         pid.EMAnumberSamples = numsamples;
+        return pid;
     }
 
     double

@@ -33,6 +33,7 @@ import java.io.IOException;
 import mraa.IntelEdison;
 
 import static java.lang.StrictMath.abs;
+import static java.lang.Thread.sleep;
 import static mraa.mraaJNI.INTEL_EDISON_GP183_get;
 import static mraa.mraaJNI.INTEL_EDISON_GP45_get;
 import static mraa.mraaJNI.INTEL_EDISON_GP46_get;
@@ -117,34 +118,54 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Log.d(TAG, "onCreate");
+        print("Eddie starting...\r\n");
 
         try {
             this.Eddyimu = new imu("I2C1");
+            print("IMU Started.\r\n");
         } catch (IOException e) {
             e.printStackTrace();
         }
 
         //this.Eddyimu.debugInfo.start();
 
-        ;
-
-        this.EddyEncoder = new encoder(INTEL_EDISON_GP183_get(),
-                INTEL_EDISON_GP47_get(),
-                INTEL_EDISON_GP46_get(),
-                INTEL_EDISON_GP45_get());
-
-        this.EddyEncoder.debugInfo.start();
 
 
-        /*
+        this.EddyEncoder = new encoder();
+        this.EddyEncoder.debug = true;
+        try {
+            this.EddyEncoder.initEncoders();
+            print("Encoders activated.\r\n");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+
+
         this.MotorDriver = new MotorDriver_mraa(48,47,15,14,49);
-
-        this.Kalman = new Kalman();
-        this.EddyPid = new pid();
-        this.EddyUDP = new UDP_Interface(this);
-
-        EddyBotRunner.start();
+        print( "Starting motor driver please be patient..\r\n" );
+        try {
+            if ( MotorDriver.motor_driver_enable() < 1 )
+            {
+                print("Startup Failed; Error starting motor driver.\r\n");
+                MotorDriver.motor_driver_disable();
+                onDestroy();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        print("Motor Driver Started.\r\n");
+        //this.MotorDriver.debugInfo.start();
+        /*
+        try {
+            sleep(5000);
+            this.MotorDriver.debugInfoing = false;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
         */
+        EddyBotRunner.start();
+
     }
 
     @Override
@@ -153,6 +174,23 @@ public class MainActivity extends Activity {
         try {
             Running = false;
             EddyBotRunner.join();
+            print( "Eddie is cleaning up...\r\n" );
+
+            EddyEncoder.CloseEncoder();
+
+            //pthread_join(udplistenerThread, NULL);
+            //print( "UDP_Interface Thread Joined..\r\n" );
+            try {
+                udplistenerThread.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+            MotorDriver.motor_driver_disable();
+            print( "Motor Driver Disabled..\r\n" );
+
+            print( "Eddie cleanup complete. Good Bye!" );
+
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -220,7 +258,7 @@ public class MainActivity extends Activity {
 
         //initUDP( &UDP_Command_Handler, &UDP_Control_Handler, &Running );
 
-        print("Eddie starting...\r\n");
+
 
         //initIdentity();//Generate a unique ID to append to default name.
 
@@ -228,40 +266,27 @@ public class MainActivity extends Activity {
 
 
 
-        EddyEncoder.initEncoders( );
-        print("Encoders activated.\r\n");
-
-
-        print("IMU Started.\r\n");
-
         double kalmanAngle;
-
+        Kalman = new Kalman();
         Kalman.InitKalman();
 
-        print( "Starting motor driver (and resetting wireless) please be patient..\r\n" );
-        if ( MotorDriver.motor_driver_enable() < 1 )
-        {
-            print("Startup Failed; Error starting motor driver.\r\n");
-            MotorDriver.motor_driver_disable();
-            return -1;
-        }
-        print("Motor Driver Started.\r\n");
 
         //print("Eddie is starting the UDP_Interface network thread..\r\n");
         //pthread_create( udplistenerThread, null, udplistener_Thread, null );
-        udplistenerThread.start();
+        //udplistenerThread.start();
 
 
         print( "Eddie is Starting PID controllers\r\n" );
+        EddyPid = new pid();
 	/*Set default PID values and init pitchPID controllers*/
         pidP_P_GAIN = pid.PIDP_P_GAIN;	pidP_I_GAIN = pid.PIDP_I_GAIN;	pidP_D_GAIN = pid.PIDP_D_GAIN;	pidP_I_LIMIT = pid.PIDP_I_LIMIT; pidP_EMA_SAMPLES = pid.PIDP_EMA_SAMPLES;
-        EddyPid.PIDinit( pitchPID[0], pidP_P_GAIN, pidP_I_GAIN, pidP_D_GAIN, pidP_I_LIMIT, pidP_EMA_SAMPLES );
-        EddyPid.PIDinit( pitchPID[1], pidP_P_GAIN, pidP_I_GAIN, pidP_D_GAIN, pidP_I_LIMIT, pidP_EMA_SAMPLES );
+        pitchPID[0] = EddyPid.PIDinit( pidP_P_GAIN, pidP_I_GAIN, pidP_D_GAIN, pidP_I_LIMIT, pidP_EMA_SAMPLES );
+        pitchPID[1] = EddyPid.PIDinit(  pidP_P_GAIN, pidP_I_GAIN, pidP_D_GAIN, pidP_I_LIMIT, pidP_EMA_SAMPLES );
 
 	/*Set default values and init speedPID controllers*/
         pidS_P_GAIN = pid.PIDS_P_GAIN;	pidS_I_GAIN = pid.PIDS_I_GAIN;	pidS_D_GAIN = pid.PIDS_D_GAIN;	pidS_I_LIMIT = pid.PIDS_I_LIMIT; pidS_EMA_SAMPLES = pid.PIDS_EMA_SAMPLES;
-        EddyPid.PIDinit( speedPID[0], pidS_P_GAIN, pidS_I_GAIN, pidS_D_GAIN, pidS_I_LIMIT, pidS_EMA_SAMPLES );
-        EddyPid.PIDinit( speedPID[1], pidS_P_GAIN, pidS_I_GAIN, pidS_D_GAIN, pidS_I_LIMIT, pidS_EMA_SAMPLES );
+        speedPID[0] = EddyPid.PIDinit( pidS_P_GAIN, pidS_I_GAIN, pidS_D_GAIN, pidS_I_LIMIT, pidS_EMA_SAMPLES );
+        speedPID[1] = EddyPid.PIDinit( pidS_P_GAIN, pidS_I_GAIN, pidS_D_GAIN, pidS_I_LIMIT, pidS_EMA_SAMPLES );
 
         //Get estimate of starting angle and specify complementary filter and kalman filter start angles
         Eddyimu.getOrientation();
@@ -308,7 +333,7 @@ public class MainActivity extends Activity {
                 inFalloverState = true;
                 print( "Help! I've fallen over and I can't get up =)\r\n");
             }
-            else if ( abs( kalmanAngle ) < 10 && inFalloverState && abs( filteredRoll ) < 20 )
+            else if ( abs( kalmanAngle ) < 30 && inFalloverState && abs( filteredRoll ) < 40 )
             {
                 if ( ++inSteadyState == 100 )
                 {
@@ -384,25 +409,13 @@ public class MainActivity extends Activity {
                         speedPID[0].differentialError
                 );
             }
+            if(inFalloverState){
+                Log.i( TAG, "inFalloverState kalmanAngle :" + abs( kalmanAngle )+"filteredRoll : "+abs( filteredRoll ));
+            }
 
         } //--while(Running)
 
-        print( "Eddie is cleaning up...\r\n" );
 
-        EddyEncoder.CloseEncoder();
-
-        //pthread_join(udplistenerThread, NULL);
-        //print( "UDP_Interface Thread Joined..\r\n" );
-        try {
-            udplistenerThread.join();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
-        MotorDriver.motor_driver_disable();
-        print( "Motor Driver Disabled..\r\n" );
-
-        print( "Eddie cleanup complete. Good Bye!\r\n" );
         return 0;
     }
 
